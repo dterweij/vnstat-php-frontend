@@ -83,7 +83,7 @@
         }
 
 	$tp = "./themes/$style";
-        if (!is_dir($tp) || !file_exists("$tp/theme.php"))
+        if (!is_dir($tp) || !file_exists("$tp/theme.php") || !preg_match('/^[a-z0-9-_]+$/i', $style))
         {
 	    $style = DEFAULT_COLORSCHEME;
         }
@@ -95,26 +95,26 @@
         global $iface, $vnstat_bin, $data_dir;
         global $hour,$day,$month,$top,$summary;
 
+	$vnstat_data = array();
         if (!isset($vnstat_bin) || $vnstat_bin == '')
         {
 	    if (file_exists("$data_dir/vnstat_dump_$iface"))
 	    {
         	$vnstat_data = file("$data_dir/vnstat_dump_$iface");
 	    }
-	    else
-	    {
-		$vnstat_data = array();
-	    }
         }
         else
         {
             $fd = popen("$vnstat_bin --dumpdb -i $iface", "r");
-            $buffer = '';
-            while (!feof($fd)) {
-                $buffer .= fgets($fd);
+            if (is_resource($fd))
+            {
+            	$buffer = '';
+            	while (!feof($fd)) {
+                	$buffer .= fgets($fd);
+            	}
+            	$vnstat_data = explode("\n", $buffer);
+            	pclose($fd);
             }
-            $vnstat_data = explode("\n", $buffer);
-            pclose($fd);
         }
 
 
@@ -122,6 +122,10 @@
         $hour = array();
         $month = array();
         $top = array();
+
+        if (isset($vnstat_data[0]) && strpos($vnstat_data[0], 'Error') !== false) {
+          return;
+        }
 
         //
         // extract data
@@ -199,16 +203,9 @@
                 $summary[$d[0]] = isset($d[1]) ? $d[1] : '';
             }
         }
-        if (count($day) == 0)
-            $day[0] = 'nodata';
+
         rsort($day);
-
-        if (count($month) == 0)
-            $month[0] = 'nodata';
         rsort($month);
-
-        if (count($hour) == 0)
-            $hour[0] = 'nodata';
         rsort($hour);
     }
 ?>
